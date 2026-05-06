@@ -1,3 +1,4 @@
 flask
+gunicorn
 dnspython
 python-dotenv
