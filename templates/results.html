@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analysis Results — Email Header Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <span class="header-tag">[ SOC TOOL ]</span>
+      <h1>Email Header Analyzer</h1>
+      <nav class="site-nav">
+        <a href="/" class="nav-link">[ MANUAL ANALYSIS ]</a>
+        <a href="/dashboard" class="nav-link">[ DASHBOARD ]</a>
+      </nav>
+    </header>
+
+    {# ── Verdict Banner ── #}
+    <div class="verdict-banner verdict-{{ result.colour }}">
+      <div class="verdict-label">VERDICT</div>
+      <div class="verdict-text">{{ result.verdict }}</div>
+      <div class="verdict-score">{{ result.score }}<span class="score-denom">/100</span></div>
+    </div>
+
+    {# ── Meta Cards ── #}
+    <div class="meta-grid">
+      <div class="meta-card">
+        <span class="meta-label">FROM</span>
+        <span class="meta-value">{{ result.parsed.from_field or '—' }}</span>
+      </div>
+      <div class="meta-card">
+        <span class="meta-label">REPLY-TO</span>
+        <span class="meta-value">{{ result.parsed.reply_to_email or '—' }}</span>
+      </div>
+      <div class="meta-card">
+        <span class="meta-label">SENDING IP</span>
+        <span class="meta-value">{{ result.parsed.sending_ip or '—' }}</span>
+      </div>
+      <div class="meta-card">
+        <span class="meta-label">DOMAIN</span>
+        <span class="meta-value">{{ result.parsed.from_domain or '—' }}</span>
+      </div>
+      {% if result.parsed.subject %}
+      <div class="meta-card meta-card--wide">
+        <span class="meta-label">SUBJECT</span>
+        <span class="meta-value">{{ result.parsed.subject }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Auth Check Table ── #}
+    {% set check_labels = {
+      'spf':          'SPF',
+      'dkim':         'DKIM',
+      'dmarc':        'DMARC',
+      'reply_to':     'Reply-To',
+      'display_name': 'Display Name',
+      'sending_ip':   'Sending IP'
+    } %}
+
+    {% set score_weights = {
+      'spf':          {'fail': 25, 'not_found': 10},
+      'dkim':         {'fail': 20, 'not_found': 8},
+      'dmarc':        {'fail': 25, 'not_found': 8},
+      'reply_to':     {'fail': 15},
+      'display_name': {'fail': 10},
+      'sending_ip':   {'fail': 10}
+    } %}
+
+    <div class="checks-section">
+      <h2 class="section-title">AUTHENTICATION CHECKS</h2>
+      <div class="checks-list">
+        {% for key, check in result.checks.items() %}
+        {% set status = check.status %}
+        <div class="check-row">
+          <span class="check-name">{{ check_labels[key] }}</span>
+          <span class="check-badge badge-{{ status }}">
+            {% if status == 'pass' %}PASS
+            {% elif status == 'fail' %}FAIL
+            {% elif status == 'not_found' %}NOT FOUND
+            {% else %}ERROR{% endif %}
+          </span>
+          <span class="check-detail">{{ check.detail }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ── Bar Chart ── #}
+    <div class="chart-section">
+      <h2 class="section-title">RISK CONTRIBUTION</h2>
+      <div class="bar-chart">
+        {% for key, check in result.checks.items() %}
+        {% set status = check.status %}
+        {% set pts = score_weights.get(key, {}).get(status, 0) %}
+        {% set max_pts = score_weights.get(key, {}).values() | list | max if score_weights.get(key) else 1 %}
+        {% set pct = ((pts / 100) * 100) | int %}
+        <div class="bar-row">
+          <span class="bar-label">{{ check_labels[key] }}</span>
+          <div class="bar-track">
+            <div
+              class="bar-fill bar-{{ 'red' if pts >= 20 else ('amber' if pts >= 8 else ('green' if pts == 0 else 'amber')) }}"
+              style="width: 0%"
+              data-width="{{ pct }}"
+            ></div>
+          </div>
+          <span class="bar-pts">{{ pts }}pts</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="actions">
+      <a href="/" class="analyse-btn">NEW ANALYSIS</a>
+    </div>
+  </div>
+
+  <script>
+    // Animate bars on load
+    window.addEventListener("load", () => {
+      document.querySelectorAll(".bar-fill").forEach(bar => {
+        const target = bar.dataset.width;
+        setTimeout(() => { bar.style.width = target + "%"; }, 100);
+      });
+    });
+  </script>
+</body>
+</html>

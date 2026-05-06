@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Header Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <span class="header-tag">[ SOC TOOL ]</span>
+      <h1>Email Header Analyzer</h1>
+      <nav class="site-nav">
+        <a href="/" class="nav-link nav-link--active">[ MANUAL ANALYSIS ]</a>
+        <a href="/dashboard" class="nav-link">[ DASHBOARD ]</a>
+      </nav>
+      <p class="subtitle">Paste a raw email header to run live SPF, DKIM, and DMARC validation with phishing risk scoring.</p>
+    </header>
+
+    {% if error %}
+    <div class="error-banner">{{ error }}</div>
+    {% endif %}
+
+    <form action="/analyse" method="POST">
+      <div class="input-card">
+        <label for="raw_header" class="input-label">RAW EMAIL HEADER</label>
+        <textarea
+          id="raw_header"
+          name="raw_header"
+          class="header-input"
+          rows="18"
+          placeholder="Paste raw email headers here...
+
+Received: from mail.example.com ([203.0.113.5])
+From: PayPal Support &lt;support@paypa1.com&gt;
+Reply-To: attacker@evil.xyz
+Subject: Urgent: Verify your account
+Date: Tue, 22 Apr 2026 10:00:00 +0000
+..."
+        ></textarea>
+      </div>
+      <button type="submit" class="analyse-btn">ANALYSE HEADERS</button>
+    </form>
+  </div>
+</body>
+</html>
