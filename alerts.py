@@ -7,8 +7,8 @@ load_dotenv()
 
 
 def send_alert(parsed, score, verdict):
-    host     = os.getenv("MAILTRAP_SMTP_HOST", "smtp.mailtrap.io")
-    port     = int(os.getenv("MAILTRAP_SMTP_PORT", 587))
+    host     = os.getenv("MAILTRAP_SMTP_HOST", "sandbox.smtp.mailtrap.io")
+    port     = int(os.getenv("MAILTRAP_SMTP_PORT", 2525))
     user     = os.getenv("MAILTRAP_USER")
     password = os.getenv("MAILTRAP_PASSWORD")
     to_addr  = os.getenv("ALERT_EMAIL")

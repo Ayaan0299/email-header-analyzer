@@ -23,7 +23,7 @@ def _extract_raw_header(raw_bytes):
 
 
 def poll():
-    host     = os.getenv("MAILTRAP_IMAP_HOST", "imap.mailtrap.io")
+    host     = os.getenv("MAILTRAP_IMAP_HOST", "sandbox.imap.mailtrap.io")
     user     = os.getenv("MAILTRAP_IMAP_USER")
     password = os.getenv("MAILTRAP_IMAP_PASSWORD")
 
