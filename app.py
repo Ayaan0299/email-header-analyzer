@@ -1,13 +1,18 @@
-"""
-Flask web app entrypoint for the Email Header Analyzer.
+"""Email Header Analyzer — Flask Web Application
+
+This module is the web app entrypoint. It defines Flask routes for user input,
+form processing, and results rendering. All parsing, DNS lookup, and scoring
+logic lives in :mod:`analyzer.py`; this module handles HTTP request/response
+only.
 
 Routes:
-  /        GET   -> renders the index page with the raw-header form
-  /analyse POST  -> receives the raw header text, calls `analyse()` from
-                   `analyzer.py`, and renders the results page
+    /        GET   -> renders the index page with the raw-header form
+    /analyse POST  -> receives the raw header text, calls `analyse()` from
+                                     `analyzer.py`, and renders the results page
 
-This file is intentionally minimal: request handling and template rendering
-are done here; all parsing and DNS logic lives in `analyzer.py`.
+Tips for beginners:
+- Start at the `index` route to see where the UI is served from.
+- The `analyse_route` reads the `raw_header` form field and calls `analyse()`.
 """
 
 from flask import Flask, render_template, request
@@ -53,6 +58,12 @@ def analyse_route():
 def dashboard():
     if not _db_available:
         return render_template("dashboard.html", stats=None, recent=[])
+    """Render optional analytics dashboard with aggregate statistics.
+
+    This route returns a simple dashboard summarising past analyses. The
+    project ships without a database; if `database.py` is not available we
+    render an empty dashboard (graceful degradation for beginners).
+    """
     try:
         stats  = get_stats()
         recent = get_recent(20)
@@ -63,4 +74,4 @@ def dashboard():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
