@@ -1,304 +1,320 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard — Email Header Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Chart.js -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="container dash-container">
+<canvas id="starfield"></canvas>
+<div class="site-wrapper">
+<div class="container dash-container">
 
-    <!-- ── Header ── -->
-    <header class="site-header">
-      <span class="header-tag">// CYBERSECURITY TOOL</span>
-      <h1>Email Header Analyzer</h1>
+  <header class="site-header">
+    <div class="header-top">
+      <div class="brand">
+        <span class="brand-tag">// CYBERSECURITY TOOL</span>
+        <span class="brand-name">Email Header Analyzer</span>
+      </div>
       <nav class="site-nav">
         <a href="/" class="nav-link">ANALYZE</a>
         <a href="/dashboard" class="nav-link nav-link--active">DASHBOARD</a>
       </nav>
-    </header>
-
-    {% if not stats or stats.total == 0 %}
-    <!-- ── Empty State ── -->
-    <div class="empty-state">
-      <div class="empty-icon">[ ]</div>
-      <p class="empty-title">NO DATA YET</p>
-      <p class="empty-body">No emails have been analysed. Run the local pipeline to populate metrics.</p>
-      <code class="empty-cmd">python3 pipeline_local.py</code>
     </div>
+  </header>
 
-    {% else %}
+  {% if not stats or stats.total == 0 %}
+  <div class="empty-state">
+    <div class="empty-icon">[ ]</div>
+    <p class="empty-title">NO DATA YET</p>
+    <p class="empty-body">No emails have been analysed. Run the local pipeline to populate metrics.</p>
+    <code class="empty-cmd">python3 pipeline_local.py</code>
+  </div>
+  {% else %}
 
-    <!-- ── Section 1: Stat Cards ── -->
-    <div class="stat-grid">
-      <div class="stat-card stat-card--blue">
-        <span class="stat-label">Total Analysed</span>
-        <span class="stat-value">{{ stats.total }}</span>
-      </div>
-      <div class="stat-card stat-card--red">
-        <span class="stat-label">Phishing Detected</span>
-        <span class="stat-value stat-value--red">{{ stats.phishing }}</span>
-      </div>
-      <div class="stat-card stat-card--amber">
-        <span class="stat-label">Suspicious</span>
-        <span class="stat-value stat-value--amber">{{ stats.suspicious }}</span>
-      </div>
-      <div class="stat-card stat-card--green">
-        <span class="stat-label">Legitimate</span>
-        <span class="stat-value stat-value--green">{{ stats.legitimate }}</span>
-      </div>
-      <div class="stat-card stat-card--blue">
-        <span class="stat-label">Detection Rate</span>
-        <span class="stat-value">{{ stats.detection_rate }}<span class="stat-unit">%</span></span>
-      </div>
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card stat-card--blue">
+      <span class="stat-label">Total Analysed</span>
+      <span class="stat-value stat-value--blue" data-target="{{ stats.total }}">0</span>
     </div>
+    <div class="stat-card stat-card--red">
+      <span class="stat-label">Phishing Detected</span>
+      <span class="stat-value stat-value--red" data-target="{{ stats.phishing }}">0</span>
+    </div>
+    <div class="stat-card stat-card--amber">
+      <span class="stat-label">Suspicious</span>
+      <span class="stat-value stat-value--amber" data-target="{{ stats.suspicious }}">0</span>
+    </div>
+    <div class="stat-card stat-card--green">
+      <span class="stat-label">Legitimate</span>
+      <span class="stat-value stat-value--green" data-target="{{ stats.legitimate }}">0</span>
+    </div>
+    <div class="stat-card stat-card--blue">
+      <span class="stat-label">Detection Rate</span>
+      <span class="stat-value stat-value--blue" data-target="{{ stats.detection_rate }}" data-float="1">0</span><span class="stat-unit">%</span>
+    </div>
+  </div>
 
-    <!-- ── Section 2: World Map ── -->
-    <div class="map-section">
-      <div class="map-header">
-        <h2 class="section-title">
-          <span class="live-dot"></span>// IP Geolocation Map
-        </h2>
-        <span class="map-subtitle">Live threat origins — click markers for details</span>
+  <!-- World Map -->
+  <div class="map-section">
+    <div class="map-header">
+      <h2 class="section-title"><span class="live-dot"></span>// IP Geolocation Map</h2>
+      <span class="map-subtitle">Live threat origins — click markers for details</span>
+    </div>
+    <div class="map-wrap">
+      <div id="geo-map"></div>
+      <canvas class="map-star-canvas" id="mapStars"></canvas>
+      <div id="map-empty" class="map-empty-overlay">
+        <span class="map-empty-text">No geolocation data available</span>
       </div>
-      <div class="map-wrap">
-        <div id="geo-map"></div>
-        <div id="map-empty" class="map-empty-overlay" style="display:none;">
-          <span class="map-empty-text">No geolocation data available yet</span>
-        </div>
-        <!-- Legend -->
-        <div class="map-legend">
-          <span class="legend-item"><span class="legend-dot legend-dot--red"></span>Phishing</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--amber"></span>Suspicious</span>
-          <span class="legend-item"><span class="legend-dot legend-dot--green"></span>Legitimate</span>
-        </div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-dot legend-dot--red"></span>Phishing</div>
+        <div class="legend-item"><span class="legend-dot legend-dot--amber"></span>Suspicious</div>
+        <div class="legend-item"><span class="legend-dot legend-dot--green"></span>Legitimate</div>
       </div>
     </div>
+  </div>
 
-    <!-- ── Section 3: Charts ── -->
-    <div class="charts-row">
-      <div class="chart-card">
-        <h2 class="section-title">
-          <span class="live-dot"></span>// Emails Per Day
-        </h2>
-        <div class="chart-canvas-wrap">
-          <canvas id="barChart"></canvas>
-        </div>
-      </div>
-      <div class="chart-card">
-        <h2 class="section-title">// Verdict Split</h2>
-        <div class="chart-canvas-wrap chart-canvas-wrap--donut">
-          <canvas id="donutChart"></canvas>
-        </div>
-      </div>
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h2 class="section-title"><span class="live-dot"></span>// Emails Per Day</h2>
+      <div class="chart-canvas-wrap"><canvas id="barChart"></canvas></div>
     </div>
-
-    <!-- ── Section 4: Protocols Table ── -->
-    <div class="protocols-section">
-      <h2 class="section-title">// SPF &middot; DKIM &middot; DMARC per Email</h2>
-      <div class="table-wrap">
-        <table class="results-table proto-table">
-          <thead>
-            <tr>
-              <th>TIMESTAMP</th>
-              <th>SENDER</th>
-              <th>DOMAIN</th>
-              <th>SPF</th>
-              <th>DKIM</th>
-              <th>DMARC</th>
-              <th>SCORE</th>
-              <th>VERDICT</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in recent %}
-            {% set v_class = 'row-red' if row.verdict == 'LIKELY PHISHING' else ('row-amber' if row.verdict == 'SUSPICIOUS' else 'row-green') %}
-            <tr class="{{ v_class }}">
-              <td class="mono proto-ts">{{ row.timestamp[:16] | replace('T',' ') }}</td>
-              <td class="mono proto-sender" title="{{ row.sender or '' }}">{{ (row.sender or '—') | truncate(28, True, '…') }}</td>
-              <td class="mono">{{ row.domain or '—' }}</td>
-              <td>
-                {% set spf = (row.spf or 'none') | lower %}
-                <span class="proto-badge proto-badge--{{ 'pass' if spf == 'pass' else ('fail' if spf == 'fail' else 'none') }}">
-                  {{ (row.spf or 'NONE') | upper }}
-                </span>
-              </td>
-              <td>
-                {% set dkim = (row.dkim or 'none') | lower %}
-                <span class="proto-badge proto-badge--{{ 'pass' if dkim == 'pass' else ('fail' if dkim == 'fail' else 'none') }}">
-                  {{ (row.dkim or 'NONE') | upper }}
-                </span>
-              </td>
-              <td>
-                {% set dmarc = (row.dmarc or 'none') | lower %}
-                <span class="proto-badge proto-badge--{{ 'pass' if dmarc == 'pass' else ('fail' if dmarc == 'fail' else 'none') }}">
-                  {{ (row.dmarc or 'NONE') | upper }}
-                </span>
-              </td>
-              <td class="mono proto-score">
-                <span class="score-chip score-chip--{{ 'red' if row.score >= 55 else ('amber' if row.score >= 25 else 'green') }}">
-                  {{ row.score }}
-                </span>
-              </td>
-              <td>
-                <span class="verdict-pill verdict-pill--{{ 'red' if row.verdict == 'LIKELY PHISHING' else ('amber' if row.verdict == 'SUSPICIOUS' else 'green') }}">
-                  {{ row.verdict }}
-                </span>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="chart-card">
+      <h2 class="section-title">// Verdict Split</h2>
+      <div class="chart-canvas-wrap chart-canvas-wrap--donut"><canvas id="donutChart"></canvas></div>
     </div>
+  </div>
 
-    {% endif %}
-  </div><!-- /container -->
+  <!-- Protocols table -->
+  <div class="protocols-section">
+    <h2 class="section-title">// SPF &middot; DKIM &middot; DMARC per Email</h2>
+    <div class="table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>TIMESTAMP</th><th>SENDER</th><th>DOMAIN</th>
+            <th>SPF</th><th>DKIM</th><th>DMARC</th>
+            <th>SCORE</th><th>VERDICT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent %}
+          {% set vc = 'row-red' if row.verdict == 'LIKELY PHISHING' else ('row-amber' if row.verdict == 'SUSPICIOUS' else 'row-green') %}
+          <tr class="{{ vc }}">
+            <td class="mono proto-ts">{{ row.timestamp[:16] | replace('T',' ') }}</td>
+            <td class="mono proto-sender" title="{{ row.sender or '' }}">{{ (row.sender or '—') | truncate(28, True, '…') }}</td>
+            <td class="mono">{{ row.domain or '—' }}</td>
+            <td>
+              {% set spf = (row.spf or 'none') | lower %}
+              <span class="proto-badge proto-badge--{{ 'pass' if spf == 'pass' else ('fail' if spf == 'fail' else 'none') }}">{{ (row.spf or 'NONE') | upper }}</span>
+            </td>
+            <td>
+              {% set dkim = (row.dkim or 'none') | lower %}
+              <span class="proto-badge proto-badge--{{ 'pass' if dkim == 'pass' else ('fail' if dkim == 'fail' else 'none') }}">{{ (row.dkim or 'NONE') | upper }}</span>
+            </td>
+            <td>
+              {% set dmarc = (row.dmarc or 'none') | lower %}
+              <span class="proto-badge proto-badge--{{ 'pass' if dmarc == 'pass' else ('fail' if dmarc == 'fail' else 'none') }}">{{ (row.dmarc or 'NONE') | upper }}</span>
+            </td>
+            <td class="mono">
+              <span class="score-chip score-chip--{{ 'red' if row.score >= 55 else ('amber' if row.score >= 25 else 'green') }}">{{ row.score }}</span>
+            </td>
+            <td>
+              <span class="verdict-pill verdict-pill--{{ 'red' if row.verdict == 'LIKELY PHISHING' else ('amber' if row.verdict == 'SUSPICIOUS' else 'green') }}">{{ row.verdict }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-  {% if stats and stats.total > 0 %}
-  <script>
-    /* ── Chart.js defaults ── */
-    Chart.defaults.color      = "#64748B";
-    Chart.defaults.font.family = "Fira Code, monospace";
-    Chart.defaults.font.size   = 11;
-    const GRID = "#1E293B";
-
-    /* ── Bar Chart: Emails Per Day ── */
-    new Chart(document.getElementById("barChart"), {
-      type: "bar",
-      data: {
-        labels:   {{ stats.emails_per_day | map(attribute='date')  | list | tojson }},
-        datasets: [{
-          data:            {{ stats.emails_per_day | map(attribute='count') | list | tojson }},
-          backgroundColor: "rgba(59,130,246,0.55)",
-          borderColor:     "#3B82F6",
-          borderWidth:     1,
-          borderRadius:    4,
-          borderSkipped:   false,
-          hoverBackgroundColor: "rgba(59,130,246,0.8)",
-        }]
-      },
-      options: {
-        responsive:          true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: GRID }, ticks: { maxRotation: 0 } },
-          y: { grid: { color: GRID }, beginAtZero: true, ticks: { precision: 0 } }
-        }
-      }
-    });
-
-    /* ── Donut Chart: Verdict Split ── */
-    new Chart(document.getElementById("donutChart"), {
-      type: "doughnut",
-      data: {
-        labels:   ["Phishing", "Suspicious", "Legitimate"],
-        datasets: [{
-          data: [
-            {{ stats.verdict_split.phishing_pct }},
-            {{ stats.verdict_split.suspicious_pct }},
-            {{ stats.verdict_split.legitimate_pct }}
-          ],
-          backgroundColor: [
-            "rgba(239,68,68,0.8)",
-            "rgba(245,158,11,0.8)",
-            "rgba(34,197,94,0.8)"
-          ],
-          borderColor: "#020617",
-          borderWidth:  3,
-          hoverOffset:  6,
-        }]
-      },
-      options: {
-        responsive:          true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels:   { padding: 16, boxWidth: 10, font: { size: 11 } }
-          }
-        },
-        cutout: "68%"
-      }
-    });
-
-    /* ── Leaflet Map ── */
-    (function initMap() {
-      const map = L.map("geo-map", {
-        center:        [20, 0],
-        zoom:          2,
-        zoomControl:   true,
-        scrollWheelZoom: true,
-      });
-
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-          subdomains:  "abcd",
-          maxZoom:     19,
-        }
-      ).addTo(map);
-
-      const VERDICT_COLORS = {
-        "LIKELY PHISHING": "#EF4444",
-        "SUSPICIOUS":      "#F59E0B",
-        "LIKELY LEGITIMATE": "#22C55E",
-      };
-
-      function markerColor(verdict) {
-        return VERDICT_COLORS[verdict] || "#64748B";
-      }
-
-      fetch("/api/geo")
-        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
-        .then(function(data) {
-          if (!data || data.length === 0) {
-            document.getElementById("map-empty").style.display = "flex";
-            return;
-          }
-          data.forEach(function(pt) {
-            if (pt.lat == null || pt.lon == null) return;
-            var color = markerColor(pt.verdict);
-            var circle = L.circleMarker([pt.lat, pt.lon], {
-              radius:      8,
-              fillColor:   color,
-              color:       color,
-              weight:      1,
-              opacity:     0.9,
-              fillOpacity: 0.8,
-            });
-            var popupHtml =
-              "<div class='map-popup'>" +
-              "<div class='mp-row'><span class='mp-label'>SENDER</span><span class='mp-val'>" + (pt.sender || "—") + "</span></div>" +
-              "<div class='mp-row'><span class='mp-label'>SCORE</span><span class='mp-val'>" + (pt.score !== undefined ? pt.score : "—") + " / 100</span></div>" +
-              "<div class='mp-row'><span class='mp-label'>VERDICT</span><span class='mp-val mp-verdict' style='color:" + color + "'>" + (pt.verdict || "—") + "</span></div>" +
-              "<div class='mp-row'><span class='mp-label'>CITY</span><span class='mp-val'>" + (pt.city || "—") + "</span></div>" +
-              "<div class='mp-row'><span class='mp-label'>COUNTRY</span><span class='mp-val'>" + (pt.country || "—") + "</span></div>" +
-              "</div>";
-            circle.bindPopup(popupHtml, { className: "map-popup-wrap", maxWidth: 260 });
-            circle.addTo(map);
-          });
-        })
-        .catch(function() {
-          document.getElementById("map-empty").style.display = "flex";
-        });
-    })();
-
-    /* ── Bar fill animation ── */
-    window.addEventListener("load", function() {
-      document.querySelectorAll(".bar-fill[data-width]").forEach(function(bar) {
-        setTimeout(function() { bar.style.width = bar.dataset.width + "%"; }, 150);
-      });
-    });
-  </script>
   {% endif %}
+</div>
+</div>
+
+<script>
+/* ── Starfield ── */
+(function(){
+  var canvas=document.getElementById('starfield');
+  var ctx=canvas.getContext('2d');var stars=[];
+  function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;stars=[];for(var i=0;i<200;i++)stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.3+.15,vx:(Math.random()-.5)*.04,vy:Math.random()*.022+.004,a:Math.random()*.65+.2,t:Math.random()*Math.PI*2});}
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);for(var i=0;i<stars.length;i++){var s=stars[i];s.t+=.006;ctx.globalAlpha=s.a*(.6+.4*Math.sin(s.t));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();s.x+=s.vx;s.y+=s.vy;if(s.y>canvas.height){s.y=-2;s.x=Math.random()*canvas.width;}if(s.x<0)s.x=canvas.width;if(s.x>canvas.width)s.x=0;}ctx.globalAlpha=1;requestAnimationFrame(draw);}
+  window.addEventListener('resize',resize);resize();draw();
+})();
+</script>
+
+{% if stats and stats.total > 0 %}
+<script>
+/* ── Count-up stat cards ── */
+(function() {
+  function countUp(el, target, dur) {
+    var isFloat = el.dataset.float;
+    var start = performance.now();
+    function tick(t) {
+      var p = Math.min((t - start) / dur, 1);
+      var ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = isFloat ? (ease * target).toFixed(1) : Math.round(ease * target);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  document.querySelectorAll('[data-target]').forEach(function(el) {
+    countUp(el, parseFloat(el.dataset.target), 1400);
+  });
+})();
+
+/* ── Chart.js defaults ── */
+Chart.defaults.color       = '#6B7A99';
+Chart.defaults.font.family = 'Fira Code, monospace';
+Chart.defaults.font.size   = 11;
+var GRID = 'rgba(255,255,255,0.05)';
+
+/* ── Bar chart ── */
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels:   {{ stats.emails_per_day | map(attribute='date')  | list | tojson }},
+    datasets: [{
+      data:                 {{ stats.emails_per_day | map(attribute='count') | list | tojson }},
+      backgroundColor:      'rgba(59,130,246,0.45)',
+      borderColor:          '#3B82F6',
+      borderWidth:          1,
+      borderRadius:         5,
+      borderSkipped:        false,
+      hoverBackgroundColor: 'rgba(59,130,246,0.75)',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: GRID }, ticks: { maxRotation: 0 } },
+      y: { grid: { color: GRID }, beginAtZero: true, ticks: { precision: 0 } }
+    }
+  }
+});
+
+/* ── Donut chart ── */
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels:   ['Phishing', 'Suspicious', 'Legitimate'],
+    datasets: [{
+      data: [
+        {{ stats.verdict_split.phishing_pct }},
+        {{ stats.verdict_split.suspicious_pct }},
+        {{ stats.verdict_split.legitimate_pct }}
+      ],
+      backgroundColor: ['rgba(239,68,68,.75)','rgba(245,158,11,.75)','rgba(34,197,94,.75)'],
+      borderColor:  '#07080d',
+      borderWidth:   3,
+      hoverOffset:   8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, boxWidth: 10, font: { size: 11 } } }
+    },
+    cutout: '68%'
+  }
+});
+
+/* ── Map starfield overlay ── */
+(function() {
+  var mc = document.getElementById('mapStars');
+  var gm = document.getElementById('geo-map');
+  if (!mc || !gm) return;
+  function resizeMapCanvas() {
+    mc.width  = gm.offsetWidth;
+    mc.height = gm.offsetHeight;
+  }
+  resizeMapCanvas();
+  var mctx = mc.getContext('2d');
+  var ms = [];
+  for (var i = 0; i < 80; i++) ms.push({x:Math.random()*mc.width, y:Math.random()*mc.height, r:Math.random()*.8+.1, a:Math.random()*.4+.1, t:Math.random()*Math.PI*2});
+  (function drawMs(){
+    mctx.clearRect(0,0,mc.width,mc.height);
+    for(var i=0;i<ms.length;i++){var s=ms[i];s.t+=.004;mctx.globalAlpha=s.a*(.5+.5*Math.sin(s.t));mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(s.x,s.y,s.r,0,Math.PI*2);mctx.fill();}
+    mctx.globalAlpha=1;requestAnimationFrame(drawMs);
+  })();
+})();
+
+/* ── Leaflet map ── */
+(function initMap() {
+  var WORLD = [[-90,-180],[90,180]];
+  var map = L.map('geo-map', {
+    center: [20, 0], zoom: 2,
+    zoomControl: true, scrollWheelZoom: true,
+    worldCopyJump: false,
+    maxBounds: WORLD, maxBoundsViscosity: 1.0,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd', maxZoom: 19, noWrap: true,
+  }).addTo(map);
+
+  var COLORS = {
+    'LIKELY PHISHING':   'red',
+    'SUSPICIOUS':        'amber',
+    'LIKELY LEGITIMATE': 'green',
+  };
+
+  var cluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+  });
+
+  fetch('/api/geo')
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(data) {
+      if (!data || !data.length) {
+        document.getElementById('map-empty').style.display = 'flex';
+        return;
+      }
+      data.forEach(function(pt) {
+        if (pt.lat == null || pt.lon == null) return;
+        var cls = COLORS[pt.verdict] || 'green';
+        var colors = {red:'#EF4444', amber:'#F59E0B', green:'#22C55E'};
+        var hex = colors[cls];
+        var icon = L.divIcon({
+          className: '',
+          html: '<div class="pulse-marker pulse-' + cls + '"></div>',
+          iconSize: [12,12], iconAnchor: [6,6], popupAnchor: [0,-10],
+        });
+        var popup =
+          "<div class='map-popup'>" +
+          "<div class='mp-row'><span class='mp-label'>SENDER</span><span class='mp-val'>" + (pt.sender||'—') + "</span></div>" +
+          "<div class='mp-row'><span class='mp-label'>IP</span><span class='mp-val'>" + (pt.ip||'—') + "</span></div>" +
+          "<div class='mp-row'><span class='mp-label'>SCORE</span><span class='mp-val'>" + (pt.score!==undefined?pt.score:'—') + " / 100</span></div>" +
+          "<div class='mp-row'><span class='mp-label'>VERDICT</span><span class='mp-val mp-verdict' style='color:" + hex + "'>" + (pt.verdict||'—') + "</span></div>" +
+          "<div class='mp-row'><span class='mp-label'>CITY</span><span class='mp-val'>" + (pt.city||'—') + "</span></div>" +
+          "<div class='mp-row'><span class='mp-label'>COUNTRY</span><span class='mp-val'>" + (pt.country||'—') + "</span></div>" +
+          "</div>";
+        L.marker([pt.lat, pt.lon], {icon: icon})
+          .bindPopup(popup, {className:'map-popup-wrap', maxWidth:260})
+          .addTo(cluster);
+      });
+      cluster.addTo(map);
+    })
+    .catch(function() {
+      document.getElementById('map-empty').style.display = 'flex';
+    });
+})();
+</script>
+{% endif %}
 </body>
 </html>

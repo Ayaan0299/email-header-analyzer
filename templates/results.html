@@ -1,140 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analysis Results — Email Header Analyzer</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <!-- Google Material Design (MDC) CSS + Icons -->
-  <link rel="stylesheet" href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
 </head>
 <body>
-  <div class="container">
-    <header class="site-header">
-      <span class="header-tag">// CYBERSECURITY TOOL</span>
-      <h1>Email Header Analyzer</h1>
+<canvas id="starfield"></canvas>
+<div class="site-wrapper">
+<div class="container page-enter">
+
+  <header class="site-header">
+    <div class="header-top">
+      <div class="brand">
+        <span class="brand-tag">// CYBERSECURITY TOOL</span>
+        <span class="brand-name">Email Header Analyzer</span>
+      </div>
       <nav class="site-nav">
         <a href="/" class="nav-link">ANALYZE</a>
         <a href="/dashboard" class="nav-link">DASHBOARD</a>
       </nav>
-    </header>
+    </div>
+  </header>
 
-    {# ── Verdict Banner ── #}
-    <div class="verdict-banner verdict-{{ result.colour }}">
-      <div>
-        <div class="verdict-label">VERDICT</div>
-        <div class="verdict-text">{{ result.verdict }}</div>
-      </div>
-      <div style="margin-left:auto; text-align:right;">
-        <div class="verdict-label">RISK SCORE</div>
-        <div class="verdict-score">{{ result.score }}<span class="score-denom">/100</span></div>
+  {% set colour = result.colour %}
+  {% set ring_hex = '#22C55E' if colour == 'green' else ('#F59E0B' if colour == 'amber' else '#EF4444') %}
+
+  <!-- Score ring + verdict -->
+  <div class="verdict-row">
+    <div class="score-ring-wrap ring-{{ colour }}">
+      <svg class="score-ring-svg" viewBox="0 0 120 120">
+        <circle class="score-arc-bg" cx="60" cy="60" r="52" fill="none" stroke-width="8"/>
+        <circle class="score-arc" cx="60" cy="60" r="52" fill="none" stroke-width="8"
+                stroke="{{ ring_hex }}"
+                data-score="{{ result.score }}"/>
+      </svg>
+      <div class="score-ring-inner">
+        <div class="score-ring-num" data-target="{{ result.score }}">0</div>
+        <div class="score-ring-label">RISK SCORE</div>
       </div>
     </div>
 
-    {# ── Meta Cards ── #}
-    <div class="meta-grid">
-      <div class="mdc-card meta-card">
-        <span class="meta-label">From</span>
-        <span class="meta-value">{{ result.parsed.from_field or '—' }}</span>
+    <div class="verdict-info">
+      <div class="verdict-chip chip-{{ colour }}">
+        <span class="verdict-chip-dot"></span>
+        {{ result.verdict }}
       </div>
-      <div class="mdc-card meta-card">
-        <span class="meta-label">Reply-To</span>
-        <span class="meta-value">{{ result.parsed.reply_to_email or '—' }}</span>
-      </div>
-      <div class="mdc-card meta-card">
-        <span class="meta-label">Sending IP</span>
-        <span class="meta-value">{{ result.parsed.sending_ip or '—' }}</span>
-      </div>
-      <div class="mdc-card meta-card">
-        <span class="meta-label">Domain</span>
-        <span class="meta-value">{{ result.parsed.from_domain or '—' }}</span>
-      </div>
-      {% if result.parsed.subject %}
-      <div class="mdc-card meta-card meta-card--wide">
-        <span class="meta-label">Subject</span>
-        <span class="meta-value">{{ result.parsed.subject }}</span>
-      </div>
+      {% if result.parsed.from_domain %}
+      <div class="verdict-domain">Domain: <span>{{ result.parsed.from_domain }}</span></div>
       {% endif %}
-    </div>
-
-    {# ── Auth Checks ── #}
-    {% set check_labels = {
-      'spf':          'SPF',
-      'dkim':         'DKIM',
-      'dmarc':        'DMARC',
-      'reply_to':     'Reply-To',
-      'display_name': 'Display Name',
-      'sending_ip':   'Sending IP'
-    } %}
-
-    {% set score_weights = {
-      'spf':          {'fail': 25, 'not_found': 10},
-      'dkim':         {'fail': 20, 'not_found': 8},
-      'dmarc':        {'fail': 25, 'not_found': 8},
-      'reply_to':     {'fail': 15},
-      'display_name': {'fail': 10},
-      'sending_ip':   {'fail': 10}
-    } %}
-
-    <div class="checks-section">
-      <h2 class="section-title">// Authentication Checks</h2>
-      <div class="checks-list">
-        {% for key, check in result.checks.items() %}
-        {% set status = check.status %}
-        <div class="check-row">
-          <span class="check-name">{{ check_labels[key] }}</span>
-          <span class="check-badge badge-{{ status }}">
-            {% if status == 'pass' %}PASS
-            {% elif status == 'fail' %}FAIL
-            {% elif status == 'not_found' %}NOT FOUND
-            {% else %}ERROR{% endif %}
-          </span>
-          <span class="check-detail">{{ check.detail }}</span>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    {# ── Bar Chart ── #}
-    <div class="chart-section">
-      <h2 class="section-title">// Risk Contribution</h2>
-      <div class="bar-chart">
-        {% for key, check in result.checks.items() %}
-        {% set status = check.status %}
-        {% set pts = score_weights.get(key, {}).get(status, 0) %}
-        {% set pct = ((pts / 100) * 100) | int %}
-        <div class="bar-row">
-          <span class="bar-label">{{ check_labels[key] }}</span>
-          <div class="bar-track">
-            <div
-              class="bar-fill bar-{{ 'red' if pts >= 20 else ('amber' if pts >= 8 else ('green' if pts == 0 else 'amber')) }}"
-              style="width: 0%"
-              data-width="{{ pct }}"
-            ></div>
-          </div>
-          <span class="bar-pts">{{ pts }}pts</span>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="actions">
-      <a href="/" class="mdc-button mdc-button--raised analyse-btn">
-        <span class="material-icons" aria-hidden="true" style="vertical-align:middle; margin-right:8px;">autorenew</span>
-        <span class="mdc-button__label">NEW ANALYSIS</span>
-      </a>
+      {% if result.parsed.sending_ip %}
+      <div class="verdict-domain">Sending IP: <span>{{ result.parsed.sending_ip }}</span></div>
+      {% endif %}
     </div>
   </div>
 
-  <script>
-    window.addEventListener("load", () => {
-      document.querySelectorAll(".bar-fill").forEach(bar => {
-        setTimeout(() => { bar.style.width = bar.dataset.width + "%"; }, 100);
-      });
-    });
-  </script>
-  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
-  <script>if(window.mdc) mdc.autoInit();</script>
+  <!-- Meta cards -->
+  <div class="meta-grid">
+    <div class="meta-card">
+      <span class="meta-label">From</span>
+      <span class="meta-value">{{ result.parsed.from_field or '—' }}</span>
+    </div>
+    <div class="meta-card">
+      <span class="meta-label">Reply-To</span>
+      <span class="meta-value">{{ result.parsed.reply_to_email or '—' }}</span>
+    </div>
+    <div class="meta-card">
+      <span class="meta-label">Sending IP</span>
+      <span class="meta-value">{{ result.parsed.sending_ip or '—' }}</span>
+    </div>
+    <div class="meta-card">
+      <span class="meta-label">Domain</span>
+      <span class="meta-value">{{ result.parsed.from_domain or '—' }}</span>
+    </div>
+    {% if result.parsed.subject %}
+    <div class="meta-card meta-card--wide">
+      <span class="meta-label">Subject</span>
+      <span class="meta-value">{{ result.parsed.subject }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Auth checks -->
+  {% set check_labels = {
+    'spf':'SPF','dkim':'DKIM','dmarc':'DMARC',
+    'reply_to':'Reply-To','display_name':'Display Name','sending_ip':'Sending IP'
+  } %}
+  {% set score_weights = {
+    'spf':{'fail':25,'not_found':10},
+    'dkim':{'fail':20,'not_found':8},
+    'dmarc':{'fail':25,'not_found':8},
+    'reply_to':{'fail':15},
+    'display_name':{'fail':10},
+    'sending_ip':{'fail':10}
+  } %}
+
+  <div class="checks-section">
+    <h2 class="section-title">// Authentication Checks</h2>
+    <div class="checks-list">
+      {% for key, check in result.checks.items() %}
+      {% set status = check.status %}
+      <div class="check-row">
+        <span class="check-name">{{ check_labels[key] }}</span>
+        <span class="check-badge badge-{{ status }}">
+          {% if status == 'pass' %}PASS
+          {% elif status == 'fail' %}FAIL
+          {% elif status == 'not_found' %}NOT FOUND
+          {% else %}ERROR{% endif %}
+        </span>
+        <span class="check-detail">{{ check.detail }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Risk contribution bar chart -->
+  <div class="chart-section">
+    <h2 class="section-title">// Risk Contribution</h2>
+    <div class="bar-chart">
+      {% for key, check in result.checks.items() %}
+      {% set status = check.status %}
+      {% set pts = score_weights.get(key, {}).get(status, 0) %}
+      {% set pct = ((pts / 100) * 100) | int %}
+      <div class="bar-row">
+        <span class="bar-label">{{ check_labels[key] }}</span>
+        <div class="bar-track">
+          <div class="bar-fill bar-{{ 'red' if pts >= 20 else ('amber' if pts > 0 else 'green') }}"
+               style="width:0%" data-width="{{ pct }}"></div>
+        </div>
+        <span class="bar-pts">{{ pts }}pts</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="actions">
+    <a href="/" class="btn-analyse">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/>
+      </svg>
+      NEW ANALYSIS
+    </a>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* Starfield */
+(function(){
+  var canvas=document.getElementById('starfield');
+  var ctx=canvas.getContext('2d');
+  var stars=[];
+  function resize(){
+    canvas.width=window.innerWidth;canvas.height=window.innerHeight;stars=[];
+    for(var i=0;i<200;i++)stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.3+.15,vx:(Math.random()-.5)*.04,vy:Math.random()*.022+.004,a:Math.random()*.65+.2,t:Math.random()*Math.PI*2});
+  }
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(var i=0;i<stars.length;i++){var s=stars[i];s.t+=.006;ctx.globalAlpha=s.a*(.6+.4*Math.sin(s.t));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();s.x+=s.vx;s.y+=s.vy;if(s.y>canvas.height){s.y=-2;s.x=Math.random()*canvas.width;}if(s.x<0)s.x=canvas.width;if(s.x>canvas.width)s.x=0;}
+    ctx.globalAlpha=1;requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);resize();draw();
+})();
+
+/* Score ring + counter */
+window.addEventListener('load', function() {
+  var arc  = document.querySelector('.score-arc');
+  var numEl= document.querySelector('.score-ring-num');
+  if (!arc) return;
+  var score  = parseInt(arc.dataset.score, 10);
+  var circ   = 326.73;
+  var target = (score / 100) * circ;
+  var start  = performance.now();
+  var dur    = 1300;
+  function tick(t) {
+    var p    = Math.min((t - start) / dur, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    if (numEl) numEl.textContent = Math.round(ease * score);
+    arc.style.strokeDasharray = (ease * target).toFixed(2) + ' ' + circ;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+});
+
+/* Bar chart */
+window.addEventListener('load', function() {
+  document.querySelectorAll('.bar-fill[data-width]').forEach(function(b) {
+    setTimeout(function(){ b.style.width = b.dataset.width + '%'; }, 200);
+  });
+});
+</script>
 </body>
 </html>
