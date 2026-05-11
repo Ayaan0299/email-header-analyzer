@@ -5,19 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Email Header Analyzer</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Google Material Design (MDC) CSS + Icons -->
+  <link rel="stylesheet" href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
   <div class="container">
     <header class="site-header">
-      <span class="header-tag">[ SOC TOOL ]</span>
+      <span class="header-tag">// CYBERSECURITY TOOL</span>
       <h1>Email Header Analyzer</h1>
       <nav class="site-nav">
-        <a href="/" class="nav-link nav-link--active">[ MANUAL ANALYSIS ]</a>
-        <a href="/dashboard" class="nav-link">[ DASHBOARD ]</a>
+        <a href="/" class="nav-link nav-link--active">ANALYZE</a>
+        <a href="/dashboard" class="nav-link">DASHBOARD</a>
       </nav>
-      <p class="subtitle">Paste a raw email header to run live SPF, DKIM, and DMARC validation with phishing risk scoring.</p>
+      <p class="subtitle">Paste a raw email header for live SPF, DKIM, and DMARC validation with phishing risk scoring.</p>
     </header>
 
     {% if error %}
@@ -25,25 +26,28 @@
     {% endif %}
 
     <form action="/analyse" method="POST">
-      <div class="input-card">
-        <label for="raw_header" class="input-label">RAW EMAIL HEADER</label>
+      <div class="mdc-card input-card" style="padding:16px;">
+        <label for="raw_header" class="input-label">// RAW EMAIL HEADER INPUT</label>
         <textarea
           id="raw_header"
           name="raw_header"
           class="header-input"
           rows="18"
-          placeholder="Paste raw email headers here...
-
-Received: from mail.example.com ([203.0.113.5])
+          placeholder="Received: from mail.example.com ([203.0.113.5])
 From: PayPal Support &lt;support@paypa1.com&gt;
 Reply-To: attacker@evil.xyz
 Subject: Urgent: Verify your account
 Date: Tue, 22 Apr 2026 10:00:00 +0000
-..."
+DKIM-Signature: v=1; a=rsa-sha256; d=paypa1.com; s=mail..."
         ></textarea>
       </div>
-      <button type="submit" class="analyse-btn">ANALYSE HEADERS</button>
+      <button type="submit" class="mdc-button mdc-button--raised analyse-btn">
+        <span class="material-icons" aria-hidden="true" style="vertical-align:middle; margin-right:8px;">search</span>
+        <span class="mdc-button__label">RUN ANALYSIS</span>
+      </button>
     </form>
   </div>
+  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+  <script>if(window.mdc) mdc.autoInit();</script>
 </body>
 </html>

@@ -9,7 +9,7 @@ load_dotenv()
 
 SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "data", "samples")
 DUMMY_RECIPIENT = "test@mailtrap.io"
-DELAY = 1.2  # seconds between sends — stays under Mailtrap free tier rate limit
+DELAY = 5.0  # seconds between sends — Mailtrap free tier is strict, 5s is safe
 
 
 def _make_server():
@@ -40,7 +40,11 @@ def send_samples():
         )
         return
 
-    print(f"[sender] Sending {len(files)} samples...")
+    limit = int(os.getenv("SENDER_LIMIT", 0))
+    if limit:
+        files = files[:limit]
+
+    print(f"[sender] Sending {len(files)} samples at {DELAY}s intervals...")
     sent = failed = 0
     server = _make_server()
 

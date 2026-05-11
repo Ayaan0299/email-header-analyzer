@@ -6,3 +6,9 @@ venv/
 *.egg-info/
 dist/
 .DS_Store
+results.db
+data/samples/
+phishing_pot/
+ui-ux-pro-max-skill/
+.claude/skills/
+design-system/

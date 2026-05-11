@@ -5,70 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard — Email Header Analyzer</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="container">
     <header class="site-header">
-      <span class="header-tag">[ SOC TOOL ]</span>
+      <span class="header-tag">// CYBERSECURITY TOOL</span>
       <h1>Email Header Analyzer</h1>
       <nav class="site-nav">
-        <a href="/" class="nav-link">[ MANUAL ANALYSIS ]</a>
-        <a href="/dashboard" class="nav-link nav-link--active">[ DASHBOARD ]</a>
+        <a href="/" class="nav-link">ANALYZE</a>
+        <a href="/dashboard" class="nav-link nav-link--active">DASHBOARD</a>
       </nav>
     </header>
 
     {% if not stats or stats.total == 0 %}
     <div class="empty-state">
       <p class="empty-title">NO DATA YET</p>
-      <p class="empty-body">The pipeline hasn't processed any emails.</p>
-      <code class="empty-cmd">python3 pipeline.py</code>
+      <p class="empty-body">No emails have been analysed. Run the pipeline to populate metrics.</p>
+      <code class="empty-cmd">python3 pipeline_local.py</code>
     </div>
     {% else %}
 
     {# ── Stat Cards ── #}
     <div class="stat-grid">
       <div class="stat-card stat-card--blue">
-        <span class="stat-label">TOTAL ANALYSED</span>
+        <span class="stat-label">Total Analysed</span>
         <span class="stat-value">{{ stats.total }}</span>
       </div>
       <div class="stat-card stat-card--red">
-        <span class="stat-label">PHISHING DETECTED</span>
+        <span class="stat-label">Phishing Detected</span>
         <span class="stat-value">{{ stats.phishing }}</span>
       </div>
       <div class="stat-card stat-card--amber">
-        <span class="stat-label">SUSPICIOUS</span>
+        <span class="stat-label">Suspicious</span>
         <span class="stat-value">{{ stats.suspicious }}</span>
       </div>
       <div class="stat-card stat-card--green">
-        <span class="stat-label">LEGITIMATE</span>
+        <span class="stat-label">Legitimate</span>
         <span class="stat-value">{{ stats.legitimate }}</span>
       </div>
       <div class="stat-card stat-card--blue">
-        <span class="stat-label">DETECTION RATE</span>
+        <span class="stat-label">Detection Rate</span>
         <span class="stat-value">{{ stats.detection_rate }}<span class="stat-unit">%</span></span>
       </div>
     </div>
 
-    {# ── Charts Row ── #}
+    {# ── Charts ── #}
     <div class="charts-row">
       <div class="chart-card">
-        <h2 class="section-title">EMAILS PER DAY</h2>
-        <canvas id="barChart" height="180"></canvas>
+        <h2 class="section-title">
+          <span class="live-dot"></span>// Emails Per Day
+        </h2>
+        <canvas id="barChart" height="160"></canvas>
       </div>
       <div class="chart-card">
-        <h2 class="section-title">VERDICT SPLIT</h2>
-        <canvas id="donutChart" height="180"></canvas>
+        <h2 class="section-title">// Verdict Split</h2>
+        <canvas id="donutChart" height="160"></canvas>
       </div>
     </div>
 
     {# ── Failing Checks ── #}
     <div class="checks-section">
-      <h2 class="section-title">MOST FAILING CHECKS</h2>
-      {% set max_fail = [stats.check_failures.spf, stats.check_failures.dkim, stats.check_failures.dmarc, stats.check_failures.reply_to, stats.check_failures.disp_name, stats.check_failures.ip_flag] | max %}
-      {% set fail_labels = [('SPF', stats.check_failures.spf), ('DKIM', stats.check_failures.dkim), ('DMARC', stats.check_failures.dmarc), ('Reply-To', stats.check_failures.reply_to), ('Display Name', stats.check_failures.disp_name), ('Sending IP', stats.check_failures.ip_flag)] %}
+      <h2 class="section-title">// Most Failing Checks</h2>
+      {% set fail_labels = [
+        ('SPF',          stats.check_failures.spf),
+        ('DKIM',         stats.check_failures.dkim),
+        ('DMARC',        stats.check_failures.dmarc),
+        ('Reply-To',     stats.check_failures.reply_to),
+        ('Display Name', stats.check_failures.disp_name),
+        ('Sending IP',   stats.check_failures.ip_flag)
+      ] %}
       <div class="bar-chart">
         {% for label, count in fail_labels %}
         {% set pct = ((count / stats.total) * 100) | int if stats.total else 0 %}
@@ -85,7 +91,7 @@
 
     {# ── Recent Activity ── #}
     <div class="recent-section">
-      <h2 class="section-title">RECENT ACTIVITY</h2>
+      <h2 class="section-title">// Recent Activity</h2>
       <div class="table-wrap">
         <table class="results-table">
           <thead>
@@ -101,7 +107,7 @@
             {% for row in recent %}
             {% set v_class = 'row-red' if row.verdict == 'LIKELY PHISHING' else ('row-amber' if row.verdict == 'SUSPICIOUS' else 'row-green') %}
             <tr class="{{ v_class }}">
-              <td class="mono">{{ row.timestamp[:16] | replace('T', ' ') }}</td>
+              <td class="mono" style="white-space:nowrap;">{{ row.timestamp[:16] | replace('T',' ') }}</td>
               <td class="mono">{{ row.sender or '—' }}</td>
               <td class="mono">{{ row.domain or '—' }}</td>
               <td class="mono">{{ row.score }}</td>
@@ -122,37 +128,33 @@
 
   {% if stats and stats.total > 0 %}
   <script>
-    const CHART_DEFAULTS = {
-      color: "#e2e4ed",
-      font: { family: "IBM Plex Mono", size: 11 }
-    };
-    Chart.defaults.color = CHART_DEFAULTS.color;
-    Chart.defaults.font  = CHART_DEFAULTS.font;
+    Chart.defaults.color = "#64748B";
+    Chart.defaults.font  = { family: "Fira Code, monospace", size: 11 };
 
-    const gridColor = "#2a2f40";
+    const grid = "#334155";
 
-    // Bar chart — emails per day
     new Chart(document.getElementById("barChart"), {
       type: "bar",
       data: {
         labels: {{ stats.emails_per_day | map(attribute='date') | list | tojson }},
         datasets: [{
-          data:            {{ stats.emails_per_day | map(attribute='count') | list | tojson }},
-          backgroundColor: "#3b82f6",
-          borderRadius:    4,
-          borderSkipped:   false,
+          data: {{ stats.emails_per_day | map(attribute='count') | list | tojson }},
+          backgroundColor: "rgba(34,197,94,0.6)",
+          borderColor: "#22C55E",
+          borderWidth: 1,
+          borderRadius: 4,
+          borderSkipped: false,
         }]
       },
       options: {
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: gridColor }, ticks: { maxRotation: 0 } },
-          y: { grid: { color: gridColor }, beginAtZero: true, ticks: { precision: 0 } }
+          x: { grid: { color: grid }, ticks: { maxRotation: 0 } },
+          y: { grid: { color: grid }, beginAtZero: true, ticks: { precision: 0 } }
         }
       }
     });
 
-    // Donut chart — verdict split
     new Chart(document.getElementById("donutChart"), {
       type: "doughnut",
       data: {
@@ -163,26 +165,25 @@
             {{ stats.verdict_split.suspicious_pct }},
             {{ stats.verdict_split.legitimate_pct }}
           ],
-          backgroundColor: ["#ef4444", "#f59e0b", "#22c55e"],
-          borderColor:     "#0d0f14",
-          borderWidth:     3,
+          backgroundColor: ["rgba(239,68,68,0.8)", "rgba(245,158,11,0.8)", "rgba(34,197,94,0.8)"],
+          borderColor: "#020617",
+          borderWidth: 3,
         }]
       },
       options: {
         plugins: {
           legend: {
             position: "bottom",
-            labels: { padding: 16, boxWidth: 12 }
+            labels: { padding: 14, boxWidth: 10 }
           }
         },
-        cutout: "65%"
+        cutout: "68%"
       }
     });
 
-    // Animate check-failure bars
     window.addEventListener("load", () => {
       document.querySelectorAll(".bar-fill[data-width]").forEach(bar => {
-        setTimeout(() => { bar.style.width = bar.dataset.width + "%"; }, 100);
+        setTimeout(() => { bar.style.width = bar.dataset.width + "%"; }, 150);
       });
     });
   </script>

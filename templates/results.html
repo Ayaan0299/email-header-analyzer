@@ -5,54 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Analysis Results — Email Header Analyzer</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Google Material Design (MDC) CSS + Icons -->
+  <link rel="stylesheet" href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
   <div class="container">
     <header class="site-header">
-      <span class="header-tag">[ SOC TOOL ]</span>
+      <span class="header-tag">// CYBERSECURITY TOOL</span>
       <h1>Email Header Analyzer</h1>
       <nav class="site-nav">
-        <a href="/" class="nav-link">[ MANUAL ANALYSIS ]</a>
-        <a href="/dashboard" class="nav-link">[ DASHBOARD ]</a>
+        <a href="/" class="nav-link">ANALYZE</a>
+        <a href="/dashboard" class="nav-link">DASHBOARD</a>
       </nav>
     </header>
 
     {# ── Verdict Banner ── #}
     <div class="verdict-banner verdict-{{ result.colour }}">
-      <div class="verdict-label">VERDICT</div>
-      <div class="verdict-text">{{ result.verdict }}</div>
-      <div class="verdict-score">{{ result.score }}<span class="score-denom">/100</span></div>
+      <div>
+        <div class="verdict-label">VERDICT</div>
+        <div class="verdict-text">{{ result.verdict }}</div>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div class="verdict-label">RISK SCORE</div>
+        <div class="verdict-score">{{ result.score }}<span class="score-denom">/100</span></div>
+      </div>
     </div>
 
     {# ── Meta Cards ── #}
     <div class="meta-grid">
-      <div class="meta-card">
-        <span class="meta-label">FROM</span>
+      <div class="mdc-card meta-card">
+        <span class="meta-label">From</span>
         <span class="meta-value">{{ result.parsed.from_field or '—' }}</span>
       </div>
-      <div class="meta-card">
-        <span class="meta-label">REPLY-TO</span>
+      <div class="mdc-card meta-card">
+        <span class="meta-label">Reply-To</span>
         <span class="meta-value">{{ result.parsed.reply_to_email or '—' }}</span>
       </div>
-      <div class="meta-card">
-        <span class="meta-label">SENDING IP</span>
+      <div class="mdc-card meta-card">
+        <span class="meta-label">Sending IP</span>
         <span class="meta-value">{{ result.parsed.sending_ip or '—' }}</span>
       </div>
-      <div class="meta-card">
-        <span class="meta-label">DOMAIN</span>
+      <div class="mdc-card meta-card">
+        <span class="meta-label">Domain</span>
         <span class="meta-value">{{ result.parsed.from_domain or '—' }}</span>
       </div>
       {% if result.parsed.subject %}
-      <div class="meta-card meta-card--wide">
-        <span class="meta-label">SUBJECT</span>
+      <div class="mdc-card meta-card meta-card--wide">
+        <span class="meta-label">Subject</span>
         <span class="meta-value">{{ result.parsed.subject }}</span>
       </div>
       {% endif %}
     </div>
 
-    {# ── Auth Check Table ── #}
+    {# ── Auth Checks ── #}
     {% set check_labels = {
       'spf':          'SPF',
       'dkim':         'DKIM',
@@ -72,7 +78,7 @@
     } %}
 
     <div class="checks-section">
-      <h2 class="section-title">AUTHENTICATION CHECKS</h2>
+      <h2 class="section-title">// Authentication Checks</h2>
       <div class="checks-list">
         {% for key, check in result.checks.items() %}
         {% set status = check.status %}
@@ -92,12 +98,11 @@
 
     {# ── Bar Chart ── #}
     <div class="chart-section">
-      <h2 class="section-title">RISK CONTRIBUTION</h2>
+      <h2 class="section-title">// Risk Contribution</h2>
       <div class="bar-chart">
         {% for key, check in result.checks.items() %}
         {% set status = check.status %}
         {% set pts = score_weights.get(key, {}).get(status, 0) %}
-        {% set max_pts = score_weights.get(key, {}).values() | list | max if score_weights.get(key) else 1 %}
         {% set pct = ((pts / 100) * 100) | int %}
         <div class="bar-row">
           <span class="bar-label">{{ check_labels[key] }}</span>
@@ -115,18 +120,21 @@
     </div>
 
     <div class="actions">
-      <a href="/" class="analyse-btn">NEW ANALYSIS</a>
+      <a href="/" class="mdc-button mdc-button--raised analyse-btn">
+        <span class="material-icons" aria-hidden="true" style="vertical-align:middle; margin-right:8px;">autorenew</span>
+        <span class="mdc-button__label">NEW ANALYSIS</span>
+      </a>
     </div>
   </div>
 
   <script>
-    // Animate bars on load
     window.addEventListener("load", () => {
       document.querySelectorAll(".bar-fill").forEach(bar => {
-        const target = bar.dataset.width;
-        setTimeout(() => { bar.style.width = target + "%"; }, 100);
+        setTimeout(() => { bar.style.width = bar.dataset.width + "%"; }, 100);
       });
     });
   </script>
+  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+  <script>if(window.mdc) mdc.autoInit();</script>
 </body>
 </html>
