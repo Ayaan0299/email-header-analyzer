@@ -15,11 +15,13 @@ Tips for beginners:
 - The `analyse_route` reads the `raw_header` form field and calls `analyse()`.
 """
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from analyzer import analyse
+from geo import geolocate_ips
 
 try:
-    from database import get_stats, get_recent
+    from database import get_stats, get_recent, init_db
+    import sqlite3 as _sqlite3
     _db_available = True
 except ImportError:
     _db_available = False
@@ -71,6 +73,56 @@ def dashboard():
         stats  = None
         recent = []
     return render_template("dashboard.html", stats=stats, recent=recent)
+
+
+@app.route("/api/geo", methods=["GET"])
+def api_geo():
+    if not _db_available:
+        return jsonify([])
+    try:
+        init_db()
+        con = _sqlite3.connect("results.db")
+        con.row_factory = _sqlite3.Row
+        cur = con.cursor()
+        cur.execute(
+            "SELECT DISTINCT sending_ip, verdict, score, sender FROM results "
+            "WHERE sending_ip IS NOT NULL AND sending_ip != ''"
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        con.close()
+    except Exception:
+        return jsonify([])
+
+    ips = [r["sending_ip"] for r in rows]
+    geo = geolocate_ips(ips)
+
+    output = []
+    for row in rows:
+        ip = row["sending_ip"]
+        if ip in geo:
+            output.append({
+                "ip": ip,
+                "lat": geo[ip]["lat"],
+                "lon": geo[ip]["lon"],
+                "country": geo[ip]["country"],
+                "city": geo[ip]["city"],
+                "verdict": row["verdict"],
+                "score": row["score"],
+                "sender": row["sender"],
+            })
+    return jsonify(output)
+
+
+@app.route("/api/stats", methods=["GET"])
+def api_stats():
+    if not _db_available:
+        return jsonify({})
+    try:
+        init_db()
+        stats = get_stats()
+        return jsonify(stats)
+    except Exception:
+        return jsonify({})
 
 
 if __name__ == "__main__":

@@ -1,18 +1,14 @@
 import os
-import time
 import requests
 from dotenv import load_dotenv
 
 from analyzer import analyse
-from database import init_db, insert_result
+from database import init_db, insert_result, is_seen, mark_seen
 from alerts import send_alert
 
 load_dotenv()
 
-POLL_INTERVAL = 300  # 5 minutes
 BASE = "https://mailtrap.io/api"
-
-_seen_ids = set()
 
 
 def _headers():
@@ -41,31 +37,37 @@ def _extract_raw_header(raw_email: str) -> str:
     return raw_email[:blank] if blank != -1 else raw_email
 
 
-def poll(account_id, inbox_id):
+def poll():
+    account_id = os.getenv("MAILTRAP_ACCOUNT_ID", "2712769")
+    inbox_id   = os.getenv("MAILTRAP_INBOX_ID")
+    if not inbox_id:
+        print("[pipeline] MAILTRAP_INBOX_ID not set in .env")
+        return
+
     print(f"[pipeline] Polling inbox {inbox_id}...")
     try:
         messages = _get_messages(account_id, inbox_id)
         if not messages:
-            print("[pipeline] No messages in inbox")
+            print("[pipeline] No new messages")
             return
 
-        new = [m for m in messages if str(m["id"]) not in _seen_ids]
+        new = [m for m in messages if not is_seen(str(m["id"]))]
         print(f"[pipeline] {len(new)} new message(s)")
 
         for msg in new:
             msg_id = str(msg["id"])
             try:
-                raw = _get_raw_email(account_id, inbox_id, msg_id)
+                raw        = _get_raw_email(account_id, inbox_id, msg_id)
                 raw_header = _extract_raw_header(raw)
+                result     = analyse(raw_header)
 
-                result  = analyse(raw_header)
                 parsed  = result["parsed"]
                 checks  = result["checks"]
                 score   = result["score"]
                 verdict = result["verdict"]
 
                 insert_result(parsed, checks, score, verdict)
-                _seen_ids.add(msg_id)
+                mark_seen(msg_id)
 
                 sender = parsed.get("from_email") or msg.get("from_email", "unknown")
                 print(f"[pipeline] {sender} | score={score} | {verdict}")
@@ -75,25 +77,16 @@ def poll(account_id, inbox_id):
 
             except Exception as e:
                 print(f"[pipeline] Error processing {msg_id}: {e}")
-                _seen_ids.add(msg_id)
+                mark_seen(msg_id)
 
     except Exception as e:
         print(f"[pipeline] Poll error: {e}")
 
 
-def main():
-    account_id = os.getenv("MAILTRAP_ACCOUNT_ID", "2712769")
-    inbox_id   = os.getenv("MAILTRAP_INBOX_ID")
-    if not inbox_id:
-        print("[pipeline] MAILTRAP_INBOX_ID not set in .env")
-        return
-
-    init_db()
-    print(f"[pipeline] Started — polling every {POLL_INTERVAL}s")
-    while True:
-        poll(account_id, inbox_id)
-        time.sleep(POLL_INTERVAL)
-
-
 if __name__ == "__main__":
-    main()
+    import time
+    init_db()
+    print("[pipeline] Started — polling every 5 minutes")
+    while True:
+        poll()
+        time.sleep(300)

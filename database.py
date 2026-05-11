@@ -26,6 +26,16 @@ def init_db():
                 verdict    TEXT
             )
         """)
+        try:
+            con.execute("ALTER TABLE results ADD COLUMN sending_ip TEXT DEFAULT ''")
+        except Exception:
+            pass
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS seen_messages (
+                message_id TEXT PRIMARY KEY,
+                seen_at    TEXT
+            )
+        """)
 
 
 def _status(check_status, kind):
@@ -54,10 +64,11 @@ def insert_result(parsed, checks, score, verdict):
         _status(checks.get("sending_ip", {}),   "ip_flag"),
         score,
         verdict,
+        parsed.get("sending_ip", ""),
     )
     with _conn() as con:
         con.execute(
-            "INSERT INTO results (timestamp,sender,domain,spf,dkim,dmarc,reply_to,disp_name,ip_flag,score,verdict) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO results (timestamp,sender,domain,spf,dkim,dmarc,reply_to,disp_name,ip_flag,score,verdict,sending_ip) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             row,
         )
 
@@ -117,6 +128,20 @@ def get_stats():
         },
         "check_failures": check_failures,
     }
+
+
+def is_seen(message_id: str) -> bool:
+    with _conn() as con:
+        cur = con.execute("SELECT 1 FROM seen_messages WHERE message_id=?", (message_id,))
+        return cur.fetchone() is not None
+
+
+def mark_seen(message_id: str):
+    with _conn() as con:
+        con.execute(
+            "INSERT OR IGNORE INTO seen_messages (message_id, seen_at) VALUES (?,?)",
+            (message_id, datetime.utcnow().isoformat(timespec="seconds")),
+        )
 
 
 def get_recent(n=20):
